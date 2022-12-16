@@ -28,18 +28,20 @@ app.get('/data', async(req, res) => {
     })
 });
 
-app.get('/freeSlots', async(req, res) => {
+app.post('/freeSlots', async(req, res) => {
+    const { date } = req.body;
     const query = db.collection('events');
-    query.get().then((doc) => {
-        if (doc.empty) {
+    query.where('date', '==', date).get().then((doc) => {
+        if (!doc.empty) {
             let  sTime = moment(startTime, 'HH:mm:ss').date(1);
             let  eTime = moment(endTime, 'HH:mm:ss').date(1);
             const busySlots = getBusySlots(doc.docs);
-            const freeSlots = [];
-            busySlots.forEach((bs) => {
-                const st = moment(bs.time, 'HH:mm:ss').date(1);
-                const et = moment(st, 'HH:mm:ss').add(bs.duration, 'minutes').date(1);
-            })
+            // const freeSlots = [];
+            // busySlots.forEach((bs) => {
+            //     const st = moment(bs.time, 'HH:mm:ss').date(1);
+            //     const et = moment(st, 'HH:mm:ss').add(bs.duration, 'minutes').date(1);
+            // })
+            return res.status(200).send(busySlots);
         }
     })
 });
