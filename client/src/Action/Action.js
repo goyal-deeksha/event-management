@@ -1,13 +1,12 @@
 import axios from "../service/axios";
 
 export const getFreeSlot = (date) => (dispatch) => {
-  axios.post('/freeSlots', {
-    date
-  }).then((res) => {
-    dispatch({
-      type: "GET_FREE_SLOTS",
-      payload: res.data,
-    });
+  axios.get('/data', ).then((res) => {
+    debugger
+    // dispatch({
+    //   type: "GET_FREE_SLOTS",
+    //   payload: res.data,
+    // });
   }).catch(() => {
 
   })
