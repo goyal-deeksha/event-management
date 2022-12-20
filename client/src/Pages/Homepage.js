@@ -1,5 +1,5 @@
-import RightSide from "./RightSide";
-import LeftSide from "./LeftSide";
+import EventBooking from "./eventBooking";
+import Slots from "./slots";
 import { useState } from "react";
 {
   /* <Datepicker /> */
@@ -13,10 +13,17 @@ const Homepage = () => {
   return (
     <div className="row">
       <div className="col-6">
-        <RightSide duration = {duration} setDuration={setDuration} startDate={startDate} setStartDate={setStartDate} selectedTimezone={selectedTimezone} setSelectedTimezone = {setSelectedTimezone}/>
+        <EventBooking
+          duration = {duration}
+          setDuration={setDuration}
+          startDate={startDate}
+          setStartDate={setStartDate}
+          selectedTimezone={selectedTimezone}
+          setSelectedTimezone = {setSelectedTimezone}
+        />
       </div>
       <div className="col-6">
-        <LeftSide duration = {duration} startDate={startDate} selectedTimezone={selectedTimezone}/>
+        <Slots duration = {duration} startDate={startDate} selectedTimezone={selectedTimezone}/>
       </div>
     </div>
   );

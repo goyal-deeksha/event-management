@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const moment = require('moment-timezone');
 const { db } = require('./firebase.js');
-const { Timestamp } = require('./firebase.js');
+require('dotenv').config()
 
 const app = express();
 app.use(express.json());
@@ -15,114 +15,107 @@ const slotDuration = 30;
 const getBusySlots = (docs) => {
     const busySlots = [];
     docs.map((d) => {
-        // const dt = moment((d.data().date).toDate()).tz('America/Los_Angeles');
-        const dt1 = moment.tz(new Date(d.data().date),"America/Los_Angeles").format();
-        busySlots.push({...d.data(), date: dt1});
+        busySlots.push({...d.data(), date: d.data().date});
     })
     return busySlots;
 }
 
-const getBetweenSlots = (startTime, endTime) => {
-    start = parseInt(startTime) * 2 + (startTime.slice(-2) > 0);
-    console.log("start === " , start);
-    end = parseInt(endTime) * 2 + (endTime.slice(-2) > 0);
-    console.log("end === " , end);
-    return Array.from({length: end - start}, (_, i) =>
-        (((i + start) >> 1) + ":" + ((i + start)%2*3) + "0"));
+const getBetweenSlots = (date, startTime, endTime) => {
+    let st = moment(new Date(date).setHours(parseInt(startTime), startTime.slice(-2))).unix();
+    const mt = st + slotDuration*60;
+    const en = moment(new Date(date).setHours(parseInt(endTime), endTime.slice(-2))).unix();
+    const all = [];
+    while(st <= en) {
+        all.push(st);
+        st += slotDuration*60;
+    }
+    return all;
 }
 
-const getFreeSlots = (busySlots) => {
-    const freeSlots = getBetweenSlots(startTime, endTime)
-    console.log("freeSlots ==== ", freeSlots)
-    busySlots.map((slot) => {
-        const dt = new Date(slot.date);
-        const tmp_date = new Date(dt.getTime() + slot.duration*60000)
-        tmp_slots = getBetweenSlots(dt.toLocaleTimeString().replace(/([\d]+:[\d]{2})(:[\d]{2})(.*)/, "$1$3"), tmp_date.toLocaleTimeString().replace(/([\d]+:[\d]{2})(:[\d]{2})(.*)/, "$1$3"))
-        console.log("between ==== ", getBetweenSlots(dt.toLocaleTimeString().replace(/([\d]+:[\d]{2})(:[\d]{2})(.*)/, "$1$3"), tmp_date.toLocaleTimeString().replace(/([\d]+:[\d]{2})(:[\d]{2})(.*)/, "$1$3")))
-        if (freeSlots.includes(tmp_slots[0])) {
-        freeSlots.splice(freeSlots.indexOf(tmp_slots[0]), tmp_slots.length)}
-    })
-    return freeSlots;
+const getFreeSlots = (date, busySlots = [], timezone) => {
+    const freeSlots = getBetweenSlots(date, startTime, endTime)
+    if (busySlots.length > 0) {
+        busySlots.map((slot) => {
+            const mt = slot.date +  slot.duration*60;
+            if (freeSlots.includes(slot.date)) {
+            freeSlots.splice(freeSlots.indexOf(slot.date), 1)}
+        })
+    }
+    return Array.from(freeSlots, (d) =>
+        (moment.tz(moment.unix(d),timezone).format()));
 }
-
-app.get('/data', async(req, res) => {
-    const query = db.collection('events');
-    query.get().then((doc) => {
-        if (doc.empty) {
-            return res.status(400).send({ message: 'No data!' });
-          } else {
-            return res.status(200).send(getBusySlots(doc.docs));
-          }
-    })
-});
 
 app.post('/freeSlots', async(req, res) => {
-    const { date } = req.body;
+    const { date,timezone } = req.body;
     const query = db.collection('events');
     const date1=new Date(date)
     const date2=new Date(date)
     date2.setDate(date1.getDate() + 1);
-    query.where('date', '>=', date1).where('date', '<', date2).orderBy('date').get().then((doc) => {
+    query.where('date', '>=', moment(date1).unix()).where('date', '<', moment(date2).unix()).orderBy('date').get().then((doc) => {
         if (!doc.empty) {
             const busySlots = getBusySlots(doc.docs);
-            const freeSlots = getFreeSlots(busySlots);
+            const freeSlots = getFreeSlots(date, busySlots, timezone);
             return res.status(200).send(freeSlots);
         }else {
-            console.log('came here')
-            return res.status(200).send(getBetweenSlots(startTime, endTime))
+            return res.status(200).send(getFreeSlots(date, [], timezone))
         }
     })
 });
 
+const createEvent = async (eObj) => {
+    const { time, duration, date, description } = eObj;
+    const eRef= db.collection('events');
+    console.log(moment(new Date(date).toISOString()))
+    const newDoc = await eRef.doc().set({
+        duration, date: moment(new Date(date).setHours(parseInt(time), time.slice(-2))).unix(), description
+    });
+    return newDoc;
+}
+
 app.post('/create', async(req, res) => {
-    const { time, duration, description, date } = req.body;
+    const { time, date } = req.body;
+    const st = moment(new Date(date).setHours(parseInt(startTime), startTime.slice(-2))).unix();
+    const et = moment(new Date(date).setHours(parseInt(endTime), endTime.slice(-2))).unix();
+    const currentTime = moment(new Date(date).setHours(parseInt(time), time.slice(-2))).unix();
     const query = db.collection('events');
-    // console.log(moment(date + " " + time).format())
     const date1=new Date(date)
-    // date1.toLocaleString('en-US', { timeZone: 'America/New_York' })
     const date2=new Date(date)
     date2.setDate(date1.getDate() + 1);
-    // query.where('date', '>=', date1).where('date', '<', date2).get().then(async (doc) => {
-    //     if (!doc.empty) {
-    //         const busySlots = getBusySlots(doc.docs);
-    //         let isBooked = false;
-    //         busySlots.forEach((bs) => {
-    //             const st = moment(bs.date.toLocaleTimeString, 'HH:mm:ss').date(1);
-    //             const et = moment(st, 'HH:mm:ss').add(bs.duration, 'minutes').date(1);
-    //             const current = moment(time, 'HH:mm:ss').date(1)
-    //             // console.log("st", st);
-    //             // console.log("et", et);
-    //             // console.log("current", current.isBetween(st, et));
-    //             if (current.isBetween(st, et)) {
-    //                 isBooked = true;
-    //                 return;
-    //             }
-    //         })
-    //         if (isBooked) {
-    //             return res.status(422).send({ message: 'This slot is already booked' })
-    //         } else {
-    //             const eRef= db.collection('events');
-    //             console.log(moment(date1).tz('America/Los_Angeles').toDate())
-    //             const newDoc = await eRef.doc().set({
-    //                 duration, date: moment(date1).tz('America/Los_Angeles'), description
-    //             })
-    //             res.status(200).send({  message: 'Booked..'})
-    //         }
-    //     } else {
-            const eRef= db.collection('events');
-            console.log(moment(date1).tz('America/Los_Angeles'))
-                const newDoc = await eRef.doc().set({
-                    duration, date: date1.getTime(), description
-                })
+    query.where('date', '>=', moment(date1).unix()).where('date', '<', moment(date2).unix()).get().then(async (doc) => {
+        if (!doc.empty) {
+            const busySlots = getBusySlots(doc.docs);
+            let isBooked = false;
+            busySlots.forEach((bs) => {
+                const st = bs.date;
+                const et = st + slotDuration*60;
+                if (currentTime >= st && currentTime <= et) {
+                    isBooked = true;
+                    return;
+                }
+            })
+            if (isBooked) {
+                return res.status(422).send({ message: 'This slot is already booked' })
+            } else if (currentTime < st || currentTime >= et) {
+                return res.status(422).send({ message: 'Not available during these hours!' })
+            } else {
+                const eDoc = createEvent({ ...req.body })
                 res.status(200).send({  message: 'Booked..'})
-    //     }
-    // })
+            }
+        } else {
+            if (currentTime < st || currentTime >= et) {
+                return res.status(422).send({ message: 'Not available during these hours!' })
+            } else {
+                const eDoc = createEvent({ ...req.body })
+                res.status(200).send({  message: 'Booked..'})
+            }
+        }
+    })
 })
 
 app.post('/events', (req, res) => {
     const { startDate, endDate } = req.body;
     const query = db.collection('events');
-    query.where('date','>=', startDate).where('date', '<=', endDate).get().then((doc) => {
+    query.where('date','>=', moment(new Date(startDate)).unix()).where('date', '<=', moment(new Date(endDate)).unix()).get().then((doc) => {
         if (doc.empty) {
             return res.status(400).send({ message: 'No data!' });
           } else {

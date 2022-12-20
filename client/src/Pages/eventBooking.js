@@ -1,17 +1,19 @@
-import React, { useState } from "react";
+import React from "react";
 import "../CSS/RightSide.css";
 import "react-datepicker/dist/react-datepicker.css";
 import DatePicker from "react-datepicker";
 import TimezoneSelect from "react-timezone-select";
 import { useDispatch } from "react-redux";
 import { getFreeSlot } from "../Action/Action";
+import moment from 'moment';
 
-const RightSide = ({duration, setDuration, startDate, setStartDate, selectedTimezone, setSelectedTimezone}) => {
+const EventBooking = (props) => {
+  const {duration, setDuration, startDate, setStartDate, selectedTimezone, setSelectedTimezone} = props;
   const dispatch = useDispatch();
 
-  const getFreeSlotHandler = () => {
-    console.log(selectedTimezone);
-    dispatch(getFreeSlot(new Date(startDate).toLocaleDateString("fr-CA")));
+  const getFreeSlots = () => {
+    const dt = moment(startDate).format('YYYY-MM-DD');
+    dispatch(getFreeSlot(dt, selectedTimezone.value));
   };
 
   return (
@@ -60,7 +62,7 @@ const RightSide = ({duration, setDuration, startDate, setStartDate, selectedTime
         type="button"
         className="btn btn-primary"
         style={{ marginTop: "15px" }}
-        onClick={getFreeSlotHandler}
+        onClick={getFreeSlots}
       >
         Get Free Slot
       </button>
@@ -68,4 +70,4 @@ const RightSide = ({duration, setDuration, startDate, setStartDate, selectedTime
   );
 };
 
-export default RightSide;
+export default EventBooking;

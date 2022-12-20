@@ -3,14 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { bookSlot } from "../Action/Action";
 import moment from "moment-timezone"
 
-const LeftSide = ({duration, startDate, selectedTimezone}) => {
+const Slots = ({duration, startDate, selectedTimezone}) => {
   const dispatch = useDispatch();
   const { time } = useSelector((store) => store.data);
 
   const bookSlotHandler = (index) => {
-  const tmp_date = new Date(startDate).setHours(parseInt(time[index]), time[index].slice(-2))
-    const dt = moment(tmp_date);
-    alert(dt);
+    const dt = moment(startDate).format('YYYY-MM-DD');
     dispatch(bookSlot({ duration: duration, date: dt, timezone: selectedTimezone, description: "", time: time[index]  }));
   }
 
@@ -26,7 +24,7 @@ const LeftSide = ({duration, startDate, selectedTimezone}) => {
               style={{ textAlign: "center", margin: "7px" }}
             >
               <button type="button" className="btn btn-primary" onClick={() => bookSlotHandler(i)}>
-                {tm}
+                {tm ? tm?.substr(11, 5) : ''}
               </button>
             </div>
           </div>
@@ -36,4 +34,4 @@ const LeftSide = ({duration, startDate, selectedTimezone}) => {
   );
 };
 
-export default LeftSide;
+export default Slots;
